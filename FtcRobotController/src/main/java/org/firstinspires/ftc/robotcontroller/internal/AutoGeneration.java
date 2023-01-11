@@ -107,10 +107,10 @@ public class AutoGeneration extends LinearOpMode {
                     }
                     moving = 2;
                 }
-                fl.setVelocity(power * 1000);
-                fr.setVelocity(power * 1000);
-                rl.setVelocity(power * 1000);
-                rr.setVelocity(power * 1000);
+                fl.setPower(power * 0.75);
+                fr.setPower(power * 0.75);
+                rl.setPower(power * 0.75);
+                rr.setPower(power * 0.75);
             }
             else if (!turning && !(gamepad1.dpad_up || gamepad1.dpad_down) && (gamepad1.dpad_left || gamepad1.dpad_right) && !gamepad1.b) {
                 float power = 0;
@@ -142,18 +142,18 @@ public class AutoGeneration extends LinearOpMode {
                     }
                     moving = 1;
                 }
-                fl.setVelocity(power * 1000);
-                fr.setVelocity(-power * 1000);
-                rl.setVelocity(-power * 1000);
-                rr.setVelocity(power * 1000);
+                fl.setPower(power * 0.75);
+                fr.setPower(-power * 0.75);
+                rl.setPower(-power * 0.75);
+                rr.setPower(power * 0.75);
             }
             else if (gamepad1.b && (gamepad1.dpad_left || gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_down)) {
                 if (gamepad1.dpad_down || gamepad1.dpad_up) {
                     turning = false;
-                    fl.setVelocity(0);
-                    fr.setVelocity(0);
-                    rl.setVelocity(0);
-                    rr.setVelocity(0);
+                    fl.setPower(0);
+                    fr.setPower(0);
+                    rl.setPower(0);
+                    rr.setPower(0);
                     for (DcMotorEx motor : loggingMotors) {
                         logs.add(hardwareMap.getNamesOf(motor) + ": " + motor.getCurrentPosition());
                         motor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
@@ -174,31 +174,32 @@ public class AutoGeneration extends LinearOpMode {
                     if (gamepad1.dpad_right) {
                         turning = true;
                         logs.add("| TURN (1, -1, 1, -1) |");
-                        fl.setVelocity(500);
-                        fr.setVelocity(-500);
-                        rl.setVelocity(500);
+                        fl.setPower(0.2);
+                        fr.setPower(-0.2);
+                        rl.setPower(0.2);
                     }
                     else if (gamepad1.dpad_left) {
                         turning = true;
                         logs.add("| TURN (1, -1, 1, -1) |");
-                        fl.setVelocity(500);
-                        fr.setVelocity(-500);
-                        rl.setVelocity(500);
-                        rr.setVelocity(-500);
+                        fl.setPower(0.2);
+                        fr.setPower(-0.2);
+                        rl.setPower(0.2);
+                        rr.setPower(-0.2);
                     }
                 }
             }
             else if (!turning) {
-                fl.setVelocity(0);
-                fr.setVelocity(0);
-                rl.setVelocity(0);
-                rr.setVelocity(0);
+                fl.setPower(0);
+                fr.setPower(0);
+                rl.setPower(0);
+                rr.setPower(0);
             }
         }
 
-        fl.setVelocity(0);
-        fr.setVelocity(0);
-        rl.setVelocity(0);
-        rr.setVelocity(0);
+        fl.setPower(0);
+        fr.setPower(0);
+        rl.setPower(0);
+        rr.setPower(0);
     }
 }
+\
