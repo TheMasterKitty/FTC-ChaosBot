@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.robotcontroller.internal;
+    package org.firstinspires.ftc.robotcontroller.internal;
 
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -7,8 +7,9 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.TouchSensor;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
-@TeleOp(name="Main TeleOP")
+    @TeleOp(name="Main TeleOP")
 public class MainTeleOP extends LinearOpMode {
     FieldCentric fc = new FieldCentric();
     MecanumDrive md = new MecanumDrive();
@@ -16,6 +17,25 @@ public class MainTeleOP extends LinearOpMode {
     boolean enableMecanumDrive = true;
     boolean running = false;
     int runningOpt = 0;
+    int LiftMotorVariance = 50; // Identify in TICKS how close the left motor needs to get to target hieght, this provides some flexiblity and prevents weird oscilations when a specific value can not be reached.
+    float powerMult = 1; // Variable to store the power multiplier based on triggers pressed by the driver
+
+    // Variables to determine when buttons A or Y are pressed, and not cause the code to run on every cycle
+    boolean LastValueGP1A = false;
+    boolean LastValueGP1Y = false;
+
+    // These variables are about in the Intake server running and ramp down variables.
+        // Varialbes with UP are used for when the cone is being picked up
+        // Variables with DOWN are for when the cone is being dropped.
+    double servopower=0;
+    double ServoUpMuitly=0.75; // Percent to change the servo speed per step
+    double ServoDownMuilty=0.90; // Percent to change the servo speed per step
+    double ServoThershold=0.01; // Theashold as to what is considered 0 and shold stop the motor
+    double servoMax = 0.75; // Maximum Servo spped in value of 0->1.0
+    double servoStepTime = 0.1; // How often to step down the motor in seconds.
+
+    ElapsedTime tm = new ElapsedTime((ElapsedTime.Resolution.MILLISECONDS)); // Used for tracking main loop duration.
+
     @Override
     public void runOpMode() throws InterruptedException {
         DcMotor fl = hardwareMap.get(DcMotor.class, "fl");
@@ -47,8 +67,11 @@ public class MainTeleOP extends LinearOpMode {
         rr.setDirection(DcMotor.Direction.REVERSE);
         el.setDirection(DcMotor.Direction.REVERSE);
 
-        float powerMult = 1;
         waitForStart();
+        LastValueGP1A = gamepad1.a; // Initialize the current value of the A button
+        LastValueGP1Y = gamepad1.y; // Initialize the current value of the Y button
+        servopower=0; // Default the lift servo power.
+
 
         while (opModeIsActive()) {
             telemetry.addLine("FieldCentric: " + (enableMecanumDrive ? "OFF" : "ON"));
@@ -62,10 +85,15 @@ public class MainTeleOP extends LinearOpMode {
                 else if (runningOpt == 3)
                     telemetry.addLine("AutoRunning Arm to high drop-off.");
             }
+            telemetry.addLine("Loop Time: " + tm.toString()); // This is a timer to know how quickly the main code loop is running
+            tm.reset(); // Reset the loop timer
+
+            if(servopower != 0) telemetry.addLine("Servo Power: " + servopower); // When the cone Servo is running, display power.
+
             telemetry.update();
             if (activated(gamepad1.left_stick_x) || activated(gamepad1.left_stick_y) || activated(gamepad1.right_stick_x)) {
                 if (enableMecanumDrive) md.Drive(-gamepad1.left_stick_x * 1.1 * powerMult, gamepad1.left_stick_y * powerMult, -gamepad1.right_stick_x * powerMult);
-                else fc.Drive(-gamepad1.left_stick_y * powerMult, gamepad1.left_stick_x * 1.1 * powerMult, -gamepad1.right_stick_x);
+                else fc.Drive(-gamepad1.left_stick_y * powerMult, gamepad1.left_stick_x  * powerMult, -gamepad1.right_stick_x * powerMult); // removed - * 1.1
             }
             else {
                 fl.setPower(0);
@@ -101,23 +129,25 @@ public class MainTeleOP extends LinearOpMode {
                 running = true;
                 runningOpt = 3;
             }
+            // A windows of "LiftMotorVariance" ticks was added to each condition to help when the motor is not exactly at the specific value.
+            // The specific value in both conditions was causing the arm to sometimes fluctuate at trying to reach a specific place.
             if (running && runningOpt == 0) {
-                if (el.getCurrentPosition() > 500 && opModeIsActive() && running) el.setPower(-1);
+                if (el.getCurrentPosition() > 500 + LiftMotorVariance && opModeIsActive() && running) el.setPower(-1);
                 else if (el.getCurrentPosition() < 500 && opModeIsActive() && running) el.setPower(1);
                 else running = false;
             }
             if (running && runningOpt == 1) {
-                if (el.getCurrentPosition() > 3200 && opModeIsActive() && running) el.setPower(-1);
+                if (el.getCurrentPosition() > 3200 + LiftMotorVariance && opModeIsActive() && running) el.setPower(-1);
                 else if (el.getCurrentPosition() < 3200 && opModeIsActive() && running) el.setPower(1);
                 else running = false;
             }
             if (running && runningOpt == 2) {
-                if (el.getCurrentPosition() > 5800 && opModeIsActive() && running) el.setPower(-1);
+                if (el.getCurrentPosition() > 5800 + LiftMotorVariance && opModeIsActive() && running) el.setPower(-1);
                 else if (el.getCurrentPosition() < 5800 && opModeIsActive() && running) el.setPower(1);
                 else running = false;
             }
             if (running && runningOpt == 3) {
-                if (el.getCurrentPosition() > 7000 && !high.isPressed() && opModeIsActive() && running) el.setPower(-1);
+                if (el.getCurrentPosition() > 7000 + LiftMotorVariance && !high.isPressed() && opModeIsActive() && running) el.setPower(-1);
                 else if (el.getCurrentPosition() < 7000 && !high.isPressed() && opModeIsActive() && running) el.setPower(1);
                 else running = false;
             }
@@ -125,21 +155,61 @@ public class MainTeleOP extends LinearOpMode {
                 el.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                 el.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             }
-            powerMult = 1 - gamepad1.left_trigger;
-            if (gamepad1.left_stick_button)
-                fc.newOffset();
-            if (gamepad1.right_stick_button)
+
+            // Set specific runs speeds based on trigger pressed, instead of how much trigger is pressed
+            // per request from the drivers.
+            if(activated(gamepad1.left_trigger))
+                powerMult = 0.25f;
+            else if(activated(gamepad1.right_trigger))
+                powerMult = 0.75f;
+            else
+                powerMult = 1;
+
+
+
+            // Only run this code when the value of the A button has changed
+            // This ensures that this code is only run once per button press
+            if (gamepad1.a && LastValueGP1A != gamepad1.a)
                 enableMecanumDrive = !enableMecanumDrive;
-            if (gamepad2.left_bumper) {
-                coneServo.setPower(-1);
+            LastValueGP1A = gamepad1.a;
+
+            // Only run this when the value of the Y button has changed.
+            // This ensures that the code is only run once per button press.
+            if (gamepad1.y && LastValueGP1Y != gamepad1.y)
+                fc.newOffset();
+            LastValueGP1Y = gamepad1.y;
+
+
+            // The following code is realted to handling the servo that is used for picking up and
+            // placing down the cone.  After the user releases the trigger, the servo will go
+            // through a period of ramp down in speed, this helps extend out the motion and allow for
+            // immediate restart of the motion if needed.
+            if (gamepad2.left_bumper || activated(gamepad2.left_trigger)) {
+                // Pickup Cone / UP
+                servopower=-1 * servoMax;
+                resetRuntime();
             }
-            else if (gamepad2.right_bumper) {
-                coneServo.setPower(1);
+            else if (gamepad2.right_bumper || activated(gamepad2.right_trigger)) {
+                // Drop Conde / Down
+                servopower=1 * servoMax;
+                resetRuntime();
             }
-            else {
-                coneServo.setPower(0);
+            else if (servopower == 0){
+                // Do nothing, but prevent the rest of the else clauses from being checked.
             }
-        }
+            else if ( java.lang.Math.abs(servopower) > 0 &&  java.lang.Math.abs(servopower) < ServoThershold){
+                // Within the threashold to stop the servo.
+                servopower=0;
+            }
+            else if (servopower<0 && getRuntime() > servoStepTime){
+                servopower=servopower*ServoUpMuitly;
+                resetRuntime();
+            } else if (servopower>0 && getRuntime() > servoStepTime){
+                servopower=servopower*ServoDownMuilty;
+                resetRuntime();
+            }
+            coneServo.setPower(servopower); // Set the actual Servo power based on all the logic.
+        } // End main code Loop
 
         fl.setPower(0);
         fr.setPower(0);
